@@ -1,12 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ConfigType } from '@nestjs/config';
+﻿import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 import { AuthService } from './auth.service.js';
 import { RefreshTokenRepository } from './refresh-token.repository.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import appConfig from '../config/app.config.js';
+import appConfig, { AppConfig } from '../config/app.config.js';
 import { User, RefreshToken } from '@prisma/client';
 
 const mockPrismaService = {
@@ -29,7 +28,7 @@ const mockRefreshTokenRepo = {
   create: vi.fn(),
 };
 
-const mockConfig: ConfigType<typeof appConfig> = {
+const mockConfig: AppConfig = {
   jwtSecret: 'test-secret',
   jwtAccessTtl: 900,
   jwtRefreshTtl: 604800,
@@ -180,3 +179,4 @@ describe('AuthService', () => {
     });
   });
 });
+

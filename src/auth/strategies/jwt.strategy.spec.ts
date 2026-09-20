@@ -1,14 +1,13 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ConfigType } from '@nestjs/config';
+﻿import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException } from '@nestjs/common';
 
 import { JwtStrategy } from './jwt.strategy.js';
-import appConfig from '../../config/app.config.js';
+import appConfig, { AppConfig } from '../../config/app.config.js';
 import { JwtPayload } from '../jwt-payload.interface.js';
 
 describe('JwtStrategy', () => {
   let strategy: JwtStrategy;
-  const mockConfig: ConfigType<typeof appConfig> = {
+  const mockConfig: AppConfig = {
     jwtSecret: 'test-secret',
     jwtAccessTtl: 900,
     jwtRefreshTtl: 604800,
