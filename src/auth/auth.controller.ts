@@ -1,12 +1,10 @@
-import { Controller, Post, Body, HttpCode, Req, UseGuards } from '@nestjs/common';
+﻿import { Controller, Post, Body, HttpCode, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { AuthService } from './auth.service.js';
+import { AuthService, AuthResponse } from './auth.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RefreshTokenDto } from './dto/refresh-token.dto.js';
-import { AuthResponse } from './auth.service.js';
 import { JwtGuard } from './guards/jwt.guard.js';
-import { User } from '../common/decorators/user.decorator.js';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -18,7 +16,7 @@ export class AuthController {
   @ApiResponse({ status: 201, description: 'User registered successfully' })
   @ApiResponse({ status: 409, description: 'Email already exists' })
   async register(@Body() dto: RegisterDto): Promise<AuthResponse> {
-    return this authService.register(dto.email, dto.password);
+    return this.authService.register(dto.email, dto.password);
   }
 
   @Post('login')
@@ -27,7 +25,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() dto: LoginDto): Promise<AuthResponse> {
-    return this authService.login(dto.email, dto.password);
+    return this.authService.login(dto.email, dto.password);
   }
 
   @Post('refresh')
@@ -36,7 +34,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Token refreshed' })
   @ApiResponse({ status: 401, description: 'Invalid refresh token' })
   async refresh(@Body() dto: RefreshTokenDto): Promise<AuthResponse> {
-    return this authService.refresh(dto.refreshToken);
+    return this.authService.refresh(dto.refreshToken);
   }
 
   @Post('logout')
@@ -46,7 +44,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Logged out' })
   async logout(@Req() req: any, @Body() dto: RefreshTokenDto): Promise<{ message: string }> {
     const userId = req.user.sub;
-    await this authService.logout(userId, dto.refreshToken);
+    await this.authService.logout(userId, dto.refreshToken);
     return { message: 'Logged out' };
   }
 
@@ -57,7 +55,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'All tokens revoked' })
   async logoutAll(@Req() req: any): Promise<{ message: string }> {
     const userId = req.user.sub;
-    await this authService.logoutAll(userId);
+    await this.authService.logoutAll(userId);
     return { message: 'All tokens revoked' };
   }
 }

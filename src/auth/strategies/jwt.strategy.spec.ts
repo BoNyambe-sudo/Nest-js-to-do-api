@@ -3,8 +3,8 @@ import { ConfigType } from '@nestjs/config';
 import { UnauthorizedException } from '@nestjs/common';
 
 import { JwtStrategy } from './jwt.strategy.js';
-import appConfig from '../config/app.config.js';
-import { JwtPayload } from './jwt-payload.interface.js';
+import appConfig from '../../config/app.config.js';
+import { JwtPayload } from '../jwt-payload.interface.js';
 
 describe('JwtStrategy', () => {
   let strategy: JwtStrategy;

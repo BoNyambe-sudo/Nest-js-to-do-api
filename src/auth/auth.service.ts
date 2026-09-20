@@ -1,9 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  UnauthorizedException,
-  ConflictException,
-} from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -14,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { RefreshTokenRepository } from './refresh-token.repository.js';
 import { JwtPayload } from './jwt-payload.interface.js';
 import appConfig from '../config/app.config.js';
+import type { AppConfig } from '../config/app.config.js';
 
 export interface AuthTokens {
   accessToken: string;
@@ -31,8 +27,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly refreshTokenRepo: RefreshTokenRepository,
-    @Inject(appConfig.KEY)
-    private readonly config: ConfigType<typeof appConfig>,
+    @Inject(appConfig.KEY) private readonly config: AppConfig,
   ) {}
 
   async register(email: string, password: string): Promise<AuthResponse> {
@@ -45,7 +40,7 @@ export class AuthService {
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
+        (error as Prisma.PrismaClientKnownRequestError).code === 'P2002'
       ) {
         throw new ConflictException('Email already exists');
       }

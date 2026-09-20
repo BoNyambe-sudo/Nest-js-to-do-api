@@ -22,7 +22,7 @@ export class RefreshTokenRepository {
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
+        if ((error as Prisma.PrismaClientKnownRequestError).code === 'P2002') {
           throw new ConflictException('Email already exists');
         }
       }
