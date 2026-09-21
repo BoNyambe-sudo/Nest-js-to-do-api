@@ -11,8 +11,9 @@ import { AuthModule } from '../auth/auth.module.js';
   imports: [
     PrismaModule,
     AuthModule,
+    ConfigModule,
     ThrottlerModule.forRootAsync({
-      imports: [],
+      imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
         throttlers: [
           {
