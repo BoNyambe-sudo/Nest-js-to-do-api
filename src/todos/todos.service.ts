@@ -90,10 +90,8 @@ export class TodosService {
     
     const totalResult = await this.prisma.client.orm.public.Todo
       .where(where)
-      .count();
-    const total = typeof totalResult === 'object' && 'output' in totalResult 
-      ? Number(totalResult.output) 
-      : Number(totalResult);
+      .aggregate((a) => ({ total: a.count() }));
+    const total = Number(totalResult.total);
 
     let nextCursor: string | null = null;
     if (data.length > limit) {
