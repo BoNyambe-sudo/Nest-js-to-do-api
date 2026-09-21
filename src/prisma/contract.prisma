@@ -1,0 +1,49 @@
+// use prisma-8
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id            String        @id @default(uuid())
+  email         String        @unique
+  passwordHash  String
+  createdAt     TimestamptzString  @default(now())
+  updatedAt     TimestamptzString  @default(now())
+  refreshTokens RefreshToken[]
+  todos         Todo[]
+}
+
+model RefreshToken {
+  id        String        @id @default(uuid())
+  tokenHash String
+  userId    String
+  expiresAt TimestamptzString
+  revokedAt TimestamptzString?
+  createdAt TimestamptzString  @default(now())
+  updatedAt TimestamptzString  @default(now())
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Todo {
+  id          String        @id @default(uuid())
+  title       String
+  description String?
+  completed   Boolean       @default(false)
+  dueDate     TimestamptzString?
+  priority    Priority      @default(MEDIUM)
+  ownerId     String?
+  createdAt   TimestamptzString  @default(now())
+  updatedAt   TimestamptzString  @default(now())
+  owner       User?         @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId])
+  @@index([completed])
+  @@index([priority])
+  @@index([createdAt])
+}

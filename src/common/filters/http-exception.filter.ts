@@ -21,10 +21,16 @@ export class HttpExceptionFilter implements ExceptionFilter<HttpException> {
     let message: string | string[];
     if (typeof exceptionResponse === 'string') {
       message = exceptionResponse;
+    } else if (
+      typeof exceptionResponse === 'object' &&
+      exceptionResponse !== null &&
+      'message' in exceptionResponse
+    ) {
+      const msg = (exceptionResponse as { message?: string | string[] })
+        .message;
+      message = msg ?? 'Internal server error';
     } else {
-      message =
-        (exceptionResponse as { message?: string | string[] }).message ??
-        exceptionResponse;
+      message = 'Internal server error';
     }
 
     const errorResponse = {

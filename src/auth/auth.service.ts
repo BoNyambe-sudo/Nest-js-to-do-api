@@ -1,10 +1,12 @@
-import { Inject, Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomBytes, createHash } from 'crypto';
-import { Prisma, User } from '@prisma/client';
-
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RefreshTokenRepository } from './refresh-token.repository.js';
 import { JwtPayload } from './jwt-payload.interface.js';
@@ -32,16 +34,14 @@ export class AuthService {
 
   async register(email: string, password: string): Promise<AuthResponse> {
     const passwordHash = await bcrypt.hash(password, 10);
-    let user: User;
+    let user;
     try {
-      user = await this.prisma.user.create({
-        data: { email, passwordHash },
+      user = await this.prisma.client.orm.public.User.create({
+        email,
+        passwordHash,
       });
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        (error as Prisma.PrismaClientKnownRequestError).code === 'P2002'
-      ) {
+      if (error instanceof Error && error.message.includes('unique constraint')) {
         throw new ConflictException('Email already exists');
       }
       throw error;
@@ -50,7 +50,7 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<AuthResponse> {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const user = await this.prisma.client.orm.public.User.where({ email }).first();
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }

@@ -1,4 +1,11 @@
-﻿import { Controller, Post, Body, HttpCode, Req, UseGuards } from '@nestjs/common';
+﻿import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService, AuthResponse } from './auth.service.js';
 import { RegisterDto } from './dto/register.dto.js';
@@ -42,7 +49,10 @@ export class AuthController {
   @UseGuards(JwtGuard)
   @ApiOperation({ summary: 'Logout (revoke refresh token)' })
   @ApiResponse({ status: 200, description: 'Logged out' })
-  async logout(@Req() req: any, @Body() dto: RefreshTokenDto): Promise<{ message: string }> {
+  async logout(
+    @Req() req: any,
+    @Body() dto: RefreshTokenDto,
+  ): Promise<{ message: string }> {
     const userId = req.user.sub;
     await this.authService.logout(userId, dto.refreshToken);
     return { message: 'Logged out' };

@@ -3,7 +3,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, RefreshToken } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service.js';
 
@@ -15,39 +14,37 @@ export class RefreshTokenRepository {
     userId: string,
     tokenHash: string,
     expiresAt: Date,
-  ): Promise<RefreshToken> {
+  ): Promise<{ id: string; tokenHash: string; userId: string; expiresAt: Date; revokedAt: Date | null; createdAt: Date; updatedAt: Date }> {
     try {
-      return await this.prisma.refreshToken.create({
-        data: { userId, tokenHash, expiresAt },
+      return await this.prisma.client.orm.public.RefreshToken.create({
+        userId,
+        tokenHash,
+        expiresAt,
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if ((error as Prisma.PrismaClientKnownRequestError).code === 'P2002') {
-          throw new ConflictException('Email already exists');
-        }
+      if (error instanceof Error && error.message.includes('unique constraint')) {
+        throw new ConflictException('Email already exists');
       }
       throw error;
     }
   }
 
-  async findValidByHash(tokenHash: string): Promise<RefreshToken | null> {
-    return this.prisma.refreshToken.findFirst({
-      where: { tokenHash, revokedAt: null, expiresAt: { gt: new Date() } },
-    });
+  async findValidByHash(tokenHash: string): Promise<{ id: string; tokenHash: string; userId: string; expiresAt: Date; revokedAt: Date | null; createdAt: Date; updatedAt: Date } | null> {
+    return this.prisma.client.orm.public.RefreshToken
+      .where({ tokenHash, revokedAt: null, expiresAt: { gt: new Date() } })
+      .first();
   }
 
-  async revoke(id: string): Promise<RefreshToken> {
-    return this.prisma.refreshToken.update({
-      where: { id },
-      data: { revokedAt: new Date() },
-    });
+  async revoke(id: string): Promise<{ id: string; tokenHash: string; userId: string; expiresAt: Date; revokedAt: Date | null; createdAt: Date; updatedAt: Date }> {
+    return this.prisma.client.orm.public.RefreshToken
+      .where({ id })
+      .update({ revokedAt: new Date() });
   }
 
   async revokeAllByUser(userId: string): Promise<number> {
-    const result = await this.prisma.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
+    const result = await this.prisma.client.orm.public.RefreshToken
+      .where({ userId, revokedAt: null })
+      .update({ revokedAt: new Date() });
     return result.count;
   }
 }
