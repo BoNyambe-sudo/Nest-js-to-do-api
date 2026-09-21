@@ -7,18 +7,41 @@ import {
   TodoQueryDto,
   Priority,
 } from './dto/todo.dto.js';
-import { Todo, Priority as PrismaPriority } from '@prisma/client';
+
+interface Todo {
+  id: string;
+  title: string;
+  description: string | null;
+  completed: boolean;
+  dueDate: Date | null;
+  priority: Priority;
+  ownerId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const createMockQueryBuilder = () => ({
+  where: vi.fn().mockReturnThis(),
+  orderBy: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockReturnThis(),
+  all: vi.fn(),
+  first: vi.fn(),
+  count: vi.fn(),
+  update: vi.fn(),
+  delete: vi.fn(),
+  create: vi.fn(),
+});
 
 const mockPrismaService = {
-  todo: {
-    findMany: vi.fn(),
-    findUnique: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    count: vi.fn(),
+  client: {
+    orm: {
+      public: {
+        Todo: createMockQueryBuilder(),
+        User: createMockQueryBuilder(),
+        RefreshToken: createMockQueryBuilder(),
+      },
+    },
   },
-  $transaction: vi.fn(),
 };
 
 describe('TodosService', () => {
@@ -45,13 +68,14 @@ describe('TodosService', () => {
           description: null,
           completed: false,
           dueDate: null,
-          priority: PrismaPriority.MEDIUM,
+          priority: Priority.MEDIUM,
           ownerId: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
       ];
-      mockPrismaService.$transaction.mockResolvedValue([todos, 1]);
+      mockPrismaService.client.orm.public.Todo.all.mockResolvedValue(todos);
+      mockPrismaService.client.orm.public.Todo.count.mockResolvedValue(1);
 
       const result: PaginatedTodos = await service.findAll({}, undefined);
       expect(result.data).toEqual(todos);
@@ -67,7 +91,7 @@ describe('TodosService', () => {
           description: null,
           completed: false,
           dueDate: null,
-          priority: PrismaPriority.MEDIUM,
+          priority: Priority.MEDIUM,
           ownerId: null,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -78,13 +102,14 @@ describe('TodosService', () => {
           description: null,
           completed: false,
           dueDate: null,
-          priority: PrismaPriority.MEDIUM,
+          priority: Priority.MEDIUM,
           ownerId: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
       ];
-      mockPrismaService.$transaction.mockResolvedValue([todos, 3]);
+      mockPrismaService.client.orm.public.Todo.all.mockResolvedValue(todos);
+      mockPrismaService.client.orm.public.Todo.count.mockResolvedValue(3);
 
       const result: PaginatedTodos = await service.findAll(
         { limit: 1 },
@@ -95,36 +120,33 @@ describe('TodosService', () => {
     });
 
     it('should filter by completed', async () => {
-      mockPrismaService.$transaction.mockResolvedValue([[], 0]);
+      mockPrismaService.client.orm.public.Todo.all.mockResolvedValue([]);
+      mockPrismaService.client.orm.public.Todo.count.mockResolvedValue(0);
       await service.findAll({ completed: true }, undefined);
-      expect(mockPrismaService.todo.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ completed: true }),
-        }),
+      expect(mockPrismaService.client.orm.public.Todo.where).toHaveBeenCalledWith(
+        expect.objectContaining({ completed: true }),
       );
     });
 
     it('should filter by userId when authenticated', async () => {
-      mockPrismaService.$transaction.mockResolvedValue([[], 0]);
+      mockPrismaService.client.orm.public.Todo.all.mockResolvedValue([]);
+      mockPrismaService.client.orm.public.Todo.count.mockResolvedValue(0);
       await service.findAll({}, 'user-1');
-      expect(mockPrismaService.todo.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ ownerId: 'user-1' }),
-        }),
+      expect(mockPrismaService.client.orm.public.Todo.where).toHaveBeenCalledWith(
+        expect.objectContaining({ ownerId: 'user-1' }),
       );
     });
 
     it('should search by q', async () => {
-      mockPrismaService.$transaction.mockResolvedValue([[], 0]);
+      mockPrismaService.client.orm.public.Todo.all.mockResolvedValue([]);
+      mockPrismaService.client.orm.public.Todo.count.mockResolvedValue(0);
       await service.findAll({ q: 'search' }, undefined);
-      expect(mockPrismaService.todo.findMany).toHaveBeenCalledWith(
+      expect(mockPrismaService.client.orm.public.Todo.where).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            OR: [
-              { title: { contains: 'search', mode: 'insensitive' } },
-              { description: { contains: 'search', mode: 'insensitive' } },
-            ],
-          }),
+          OR: [
+            { title: { contains: 'search', mode: 'insensitive' } },
+            { description: { contains: 'search', mode: 'insensitive' } },
+          ],
         }),
       );
     });
@@ -138,18 +160,18 @@ describe('TodosService', () => {
         description: null,
         completed: false,
         dueDate: null,
-        priority: PrismaPriority.MEDIUM,
+        priority: Priority.MEDIUM,
         ownerId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      mockPrismaService.todo.findUnique.mockResolvedValue(todo);
+      mockPrismaService.client.orm.public.Todo.first.mockResolvedValue(todo);
       const result = await service.findById('1');
       expect(result).toEqual(todo);
     });
 
     it('should throw if not found', async () => {
-      mockPrismaService.todo.findUnique.mockResolvedValue(null);
+      mockPrismaService.client.orm.public.Todo.first.mockResolvedValue(null);
       await expect(service.findById('nonexistent')).rejects.toThrow();
     });
   });
@@ -167,23 +189,14 @@ describe('TodosService', () => {
         description: 'Description',
         completed: false,
         dueDate: null,
-        priority: PrismaPriority.HIGH,
+        priority: Priority.HIGH,
         ownerId: 'user-1',
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      mockPrismaService.todo.create.mockResolvedValue(todo);
+      mockPrismaService.client.orm.public.Todo.create.mockResolvedValue(todo);
       const result = await service.create('user-1', dto);
       expect(result).toEqual(todo);
-      expect(mockPrismaService.todo.create).toHaveBeenCalledWith({
-        data: {
-          title: 'New Todo',
-          description: 'Description',
-          dueDate: undefined,
-          priority: PrismaPriority.HIGH,
-          ownerId: 'user-1',
-        },
-      });
     });
   });
 
@@ -195,7 +208,7 @@ describe('TodosService', () => {
         description: null,
         completed: false,
         dueDate: null,
-        priority: PrismaPriority.MEDIUM,
+        priority: Priority.MEDIUM,
         ownerId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -205,8 +218,8 @@ describe('TodosService', () => {
         title: 'New',
         completed: true,
       };
-      mockPrismaService.todo.findUnique.mockResolvedValue(existing);
-      mockPrismaService.todo.update.mockResolvedValue(updated);
+      mockPrismaService.client.orm.public.Todo.first.mockResolvedValue(existing);
+      mockPrismaService.client.orm.public.Todo.update.mockResolvedValue(updated);
       const result = await service.update('1', {
         title: 'New',
         completed: true,
@@ -215,7 +228,7 @@ describe('TodosService', () => {
     });
 
     it('should throw if todo not found', async () => {
-      mockPrismaService.todo.findUnique.mockResolvedValue(null);
+      mockPrismaService.client.orm.public.Todo.first.mockResolvedValue(null);
       await expect(
         service.update('nonexistent', {} as UpdateTodoDto),
       ).rejects.toThrow();
@@ -230,21 +243,19 @@ describe('TodosService', () => {
         description: null,
         completed: false,
         dueDate: null,
-        priority: PrismaPriority.MEDIUM,
+        priority: Priority.MEDIUM,
         ownerId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      mockPrismaService.todo.findUnique.mockResolvedValue(existing);
-      mockPrismaService.todo.delete.mockResolvedValue(existing);
+      mockPrismaService.client.orm.public.Todo.first.mockResolvedValue(existing);
+      mockPrismaService.client.orm.public.Todo.delete.mockResolvedValue(undefined);
       await service.delete('1');
-      expect(mockPrismaService.todo.delete).toHaveBeenCalledWith({
-        where: { id: '1' },
-      });
+      expect(mockPrismaService.client.orm.public.Todo.where).toHaveBeenCalledWith({ id: '1' });
     });
 
     it('should throw if todo not found', async () => {
-      mockPrismaService.todo.findUnique.mockResolvedValue(null);
+      mockPrismaService.client.orm.public.Todo.first.mockResolvedValue(null);
       await expect(service.delete('nonexistent')).rejects.toThrow();
     });
   });

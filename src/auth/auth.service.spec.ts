@@ -6,18 +6,44 @@ import { AuthService } from './auth.service.js';
 import { RefreshTokenRepository } from './refresh-token.repository.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import appConfig, { AppConfig } from '../config/app.config.js';
-import { User, RefreshToken } from '@prisma/client';
+
+interface User {
+  id: string;
+  email: string;
+  passwordHash: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface RefreshToken {
+  id: string;
+  tokenHash: string;
+  userId: string;
+  expiresAt: Date;
+  revokedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const createMockQueryBuilder = () => ({
+  where: vi.fn().mockReturnThis(),
+  first: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  delete: vi.fn(),
+  count: vi.fn(),
+  all: vi.fn(),
+});
 
 const mockPrismaService = {
-  user: {
-    findUnique: vi.fn(),
-    create: vi.fn(),
-  },
-  refreshToken: {
-    create: vi.fn(),
-    findFirst: vi.fn(),
-    update: vi.fn(),
-    updateMany: vi.fn(),
+  client: {
+    orm: {
+      public: {
+        User: createMockQueryBuilder(),
+        RefreshToken: createMockQueryBuilder(),
+        Todo: createMockQueryBuilder(),
+      },
+    },
   },
 };
 
@@ -67,10 +93,12 @@ describe('AuthService', () => {
   describe('register', () => {
     it('should hash password and create user', async () => {
       vi.mocked(bcrypt.hash).mockResolvedValue('hashed');
-      mockPrismaService.user.create.mockResolvedValue({
+      mockPrismaService.client.orm.public.User.create.mockResolvedValue({
         id: '1',
         email: 'test@example.com',
         passwordHash: 'hashed',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       } as User);
       mockJwtService.sign.mockReturnValue('access-token');
       mockRefreshTokenRepo.create.mockResolvedValue({} as RefreshToken);
@@ -78,7 +106,7 @@ describe('AuthService', () => {
       const result = await service.register('test@example.com', 'password123');
 
       expect(bcrypt.hash).toHaveBeenCalledWith('password123', 10);
-      expect(mockPrismaService.user.create).toHaveBeenCalledWith({
+      expect(mockPrismaService.client.orm.public.User.create).toHaveBeenCalledWith({
         email: 'test@example.com',
         passwordHash: 'hashed',
       });
@@ -88,8 +116,7 @@ describe('AuthService', () => {
 
     it('should throw ConflictException if email already exists', async () => {
       vi.mocked(bcrypt.hash).mockResolvedValue('hashed');
-      const error = { code: 'P2002' };
-      mockPrismaService.user.create.mockRejectedValue(error);
+      mockPrismaService.client.orm.public.User.create.mockRejectedValue(new Error('unique constraint'));
       mockJwtService.sign.mockReturnValue('access-token');
       mockRefreshTokenRepo.create.mockResolvedValue({} as RefreshToken);
 
@@ -101,17 +128,19 @@ describe('AuthService', () => {
 
   describe('login', () => {
     it('should throw if user not found', async () => {
-      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      mockPrismaService.client.orm.public.User.first.mockResolvedValue(null);
       await expect(
         service.login('test@example.com', 'password'),
       ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw if password invalid', async () => {
-      mockPrismaService.user.findUnique.mockResolvedValue({
+      mockPrismaService.client.orm.public.User.first.mockResolvedValue({
         id: '1',
         email: 'test@example.com',
         passwordHash: 'hashed',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       } as User);
       vi.mocked(bcrypt.compare).mockResolvedValue(false);
       await expect(
@@ -120,10 +149,12 @@ describe('AuthService', () => {
     });
 
     it('should return tokens on valid login', async () => {
-      mockPrismaService.user.findUnique.mockResolvedValue({
+      mockPrismaService.client.orm.public.User.first.mockResolvedValue({
         id: '1',
         email: 'test@example.com',
         passwordHash: 'hashed',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       } as User);
       vi.mocked(bcrypt.compare).mockResolvedValue(true);
       mockJwtService.sign.mockReturnValue('access-token');

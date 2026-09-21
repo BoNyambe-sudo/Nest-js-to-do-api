@@ -14,6 +14,18 @@ export enum Priority {
   HIGH = 'HIGH',
 }
 
+export interface Todo {
+  id: string;
+  title: string;
+  description: string | null;
+  completed: boolean;
+  dueDate: Date | null;
+  priority: Priority;
+  ownerId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export class CreateTodoDto {
   @ApiProperty({ description: 'Todo title', example: 'Buy groceries' })
   @IsString()

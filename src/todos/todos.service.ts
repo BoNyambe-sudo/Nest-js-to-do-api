@@ -7,20 +7,46 @@ import {
   Priority,
 } from './dto/todo.dto.js';
 
+export interface Todo {
+  id: string;
+  title: string;
+  description: string | null;
+  completed: boolean;
+  dueDate: Date | null;
+  priority: Priority;
+  ownerId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface PaginatedTodos {
-  data: Array<{
-    id: string;
-    title: string;
-    description: string | null;
-    completed: boolean;
-    dueDate: Date | null;
-    priority: Priority;
-    ownerId: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }>;
+  data: Todo[];
   nextCursor: string | null;
   total: number;
+}
+
+function toTodo(row: {
+  id: string;
+  title: string;
+  description: string | null;
+  completed: boolean;
+  dueDate: string | null;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  ownerId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}): Todo {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    completed: row.completed,
+    dueDate: row.dueDate ? new Date(row.dueDate) : null,
+    priority: row.priority as Priority,
+    ownerId: row.ownerId,
+    createdAt: new Date(row.createdAt),
+    updatedAt: new Date(row.updatedAt),
+  };
 }
 
 @Injectable()
@@ -52,18 +78,22 @@ export class TodosService {
     let queryBuilder = this.prisma.client.orm.public.Todo.where(where);
     
     if (query.cursor) {
-      queryBuilder = queryBuilder.where({ id: { gt: query.cursor } });
+      queryBuilder = queryBuilder.where((t) => t.id.gt(query.cursor!));
     }
     
     queryBuilder = queryBuilder
-      .orderBy({ createdAt: 'desc' })
+      .orderBy((t) => t.createdAt.desc())
       .limit(limit + 1);
 
-    const data = await queryBuilder.all();
+    const rows = await queryBuilder.all();
+    const data = rows.map(toTodo);
     
-    const total = await this.prisma.client.orm.public.Todo
+    const totalResult = await this.prisma.client.orm.public.Todo
       .where(where)
       .count();
+    const total = typeof totalResult === 'object' && 'output' in totalResult 
+      ? Number(totalResult.output) 
+      : Number(totalResult);
 
     let nextCursor: string | null = null;
     if (data.length > limit) {
@@ -74,68 +104,43 @@ export class TodosService {
     return { data, nextCursor, total };
   }
 
-  async findById(id: string): Promise<{
-    id: string;
-    title: string;
-    description: string | null;
-    completed: boolean;
-    dueDate: Date | null;
-    priority: Priority;
-    ownerId: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }> {
-    const todo = await this.prisma.client.orm.public.Todo.where({ id }).first();
-    if (!todo) {
+  async findById(id: string): Promise<Todo> {
+    const row = await this.prisma.client.orm.public.Todo.where({ id }).first();
+    if (!row) {
       throw new NotFoundException(`Todo with id ${id} not found`);
     }
-    return todo;
+    return toTodo(row);
   }
 
-  async create(ownerId: string | null, dto: CreateTodoDto): Promise<{
-    id: string;
-    title: string;
-    description: string | null;
-    completed: boolean;
-    dueDate: Date | null;
-    priority: Priority;
-    ownerId: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }> {
-    return this.prisma.client.orm.public.Todo.create({
+  async create(ownerId: string | null, dto: CreateTodoDto): Promise<Todo> {
+    const row = await this.prisma.client.orm.public.Todo.create({
       title: dto.title,
       description: dto.description,
-      dueDate: dto.dueDate,
+      dueDate: dto.dueDate ? dto.dueDate.toISOString() : null,
       priority: (dto.priority ?? Priority.MEDIUM) as Priority,
       ownerId,
     });
+    return toTodo(row);
   }
 
-  async update(id: string, dto: UpdateTodoDto): Promise<{
-    id: string;
-    title: string;
-    description: string | null;
-    completed: boolean;
-    dueDate: Date | null;
-    priority: Priority;
-    ownerId: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }> {
+  async update(id: string, dto: UpdateTodoDto): Promise<Todo> {
     const existing = await this.prisma.client.orm.public.Todo.where({ id }).first();
     if (!existing) {
       throw new NotFoundException(`Todo with id ${id} not found`);
     }
-    return this.prisma.client.orm.public.Todo
+    const row = await this.prisma.client.orm.public.Todo
       .where({ id })
       .update({
         title: dto.title,
         description: dto.description,
-        dueDate: dto.dueDate,
+        dueDate: dto.dueDate ? dto.dueDate.toISOString() : null,
         priority: dto.priority as Priority,
         completed: dto.completed,
       });
+    if (!row) {
+      throw new NotFoundException(`Todo with id ${id} not found after update`);
+    }
+    return toTodo(row);
   }
 
   async delete(id: string): Promise<void> {

@@ -13,8 +13,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 
 import { TodosService, PaginatedTodos } from './todos.service.js';
-import { CreateTodoDto, UpdateTodoDto, TodoQueryDto } from './dto/todo.dto.js';
-import { Todo } from '@prisma/client';
+import { CreateTodoDto, UpdateTodoDto, TodoQueryDto, Todo } from './dto/todo.dto.js';
 import { JwtGuard } from '../auth/guards/jwt.guard.js';
 import { User } from '../common/decorators/user.decorator.js';
 
